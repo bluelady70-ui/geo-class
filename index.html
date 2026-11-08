@@ -38,7 +38,7 @@ var LESSONS=[{"code": "3-01-1", "label": "Ⅲ-01-1", "unit": 3, "no": "01", "sti
 var KEY="hgt-stu2-";
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(KEY+k)||"";localStorage.setItem(KEY+k,v);}catch(e){return "";}}
 function esc(t){return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
-var code=(new URLSearchParams(location.search).get("l")||"").trim(),L=LESSONS.filter(function(x){return x.code===code})[0],tab="ws";if(L&&L.mc.length&&new URLSearchParams(location.search).get("t")==="quiz")tab="qz";
+var code=(new URLSearchParams(location.search).get("l")||"").trim(),L=LESSONS.filter(function(x){return x.code===code})[0],tab="ws";/* 차시 페이지는 활동지만 (퀴즈는 소단원 QR ?s= 로만) */
 /* 소단원 전체 퀴즈: ?s=3-01 */
 var scode=(new URLSearchParams(location.search).get("s")||"").trim();
 if(!L&&scode){var SL=LESSONS.filter(function(x){return x.unit+"-"+x.no===scode&&x.mc.length;});
@@ -53,7 +53,7 @@ function render(){var v=document.getElementById("view");
  if(!L){var h='<p>수업 시간에 선생님이 보여 준 <b>QR 코드</b>로 접속해 주세요. (QR로 열면 해당 차시의 활동지가 바로 열립니다)</p><div class="list">';
   LESSONS.forEach(function(x){h+='<a href="?l='+x.code+'"><small>'+x.label+'</small> '+esc(x.title)+'</a>';});v.innerHTML=h+'</div>';return;}
  var k=L.code,h='<div class="banner"><small>'+(L.sec?L.label+' 소단원 전체 · 개념 확인 퀴즈 '+L.mc.length+'문항':L.label.slice(0,-2)+' '+esc(L.stitle)+' · '+L.l+'차시')+'</small><b>'+esc(L.title)+'</b><span>교과서 '+esc(L.pages)+'</span></div>';
- if(!L.sec)h+='<div class="tabs"><button id="tab-ws" aria-pressed="'+(tab==="ws")+'">활동지</button>'+(L.mc.length?'<button id="tab-qz" aria-pressed="'+(tab==="qz")+'">개념 확인 퀴즈</button>':'')+'</div>';h+='<section class="sec">';
+ if(false)h+='<div class="tabs"><button id="tab-ws" aria-pressed="'+(tab==="ws")+'">활동지</button>'+(L.mc.length?'<button id="tab-qz" aria-pressed="'+(tab==="qz")+'">개념 확인 퀴즈</button>':'')+'</div>';h+='<section class="sec">';
  if(tab==="ws"){
   L.qs.forEach(function(q,qi){var id="a-"+k+"-"+qi;h+='<div class="q"><label for="'+id+'">'+(qi+1)+'. '+esc(q.q)+'</label><div class="ctx">'+esc(q.c)+'</div>';
    q.ref.forEach(function(r){h+='<div class="ref">📎 참고 자료: '+esc(r)+'</div>';});
