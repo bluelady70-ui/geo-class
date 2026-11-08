@@ -39,6 +39,12 @@ var KEY="hgt-stu2-";
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(KEY+k)||"";localStorage.setItem(KEY+k,v);}catch(e){return "";}}
 function esc(t){return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
 var code=(new URLSearchParams(location.search).get("l")||"").trim(),L=LESSONS.filter(function(x){return x.code===code})[0],tab="ws";if(L&&L.mc.length&&new URLSearchParams(location.search).get("t")==="quiz")tab="qz";
+/* 소단원 전체 퀴즈: ?s=3-01 */
+var scode=(new URLSearchParams(location.search).get("s")||"").trim();
+if(!L&&scode){var SL=LESSONS.filter(function(x){return x.unit+"-"+x.no===scode&&x.mc.length;});
+ if(SL.length){var mc=[],parts=[];SL.forEach(function(x){parts.push({code:x.code,from:mc.length,n:x.mc.length});mc=mc.concat(x.mc);});
+  var ps=SL[0].pages.split("~")[0],pe=SL[SL.length-1].pages.split("~").pop();
+  L={code:scode,label:SL[0].label.slice(0,-2),stitle:SL[0].stitle,title:SL[0].stitle,pages:ps.replace("쪽","")+"~"+pe,qs:[],mc:mc,parts:parts,sec:true};tab="qz";}}
 var sid=document.getElementById("sid"),sname=document.getElementById("sname");
 sid.value=ls("sid");sname.value=ls("sname");
 sid.addEventListener("input",function(){ls("sid",sid.value);});sname.addEventListener("input",function(){ls("sname",sname.value);});
@@ -46,8 +52,8 @@ if(ENDPOINT.indexOf("http")!==0){var w=document.getElementById("warn");w.hidden=
 function render(){var v=document.getElementById("view");
  if(!L){var h='<p>수업 시간에 선생님이 보여 준 <b>QR 코드</b>로 접속해 주세요. (QR로 열면 해당 차시의 활동지가 바로 열립니다)</p><div class="list">';
   LESSONS.forEach(function(x){h+='<a href="?l='+x.code+'"><small>'+x.label+'</small> '+esc(x.title)+'</a>';});v.innerHTML=h+'</div>';return;}
- var k=L.code,h='<div class="banner"><small>'+L.label.slice(0,-2)+' '+esc(L.stitle)+' · '+L.l+'차시</small><b>'+esc(L.title)+'</b><span>교과서 '+esc(L.pages)+'</span></div>';
- h+='<div class="tabs"><button id="tab-ws" aria-pressed="'+(tab==="ws")+'">활동지</button>'+(L.mc.length?'<button id="tab-qz" aria-pressed="'+(tab==="qz")+'">개념 확인 퀴즈</button>':'')+'</div><section class="sec">';
+ var k=L.code,h='<div class="banner"><small>'+(L.sec?L.label+' 소단원 전체 · 개념 확인 퀴즈 '+L.mc.length+'문항':L.label.slice(0,-2)+' '+esc(L.stitle)+' · '+L.l+'차시')+'</small><b>'+esc(L.title)+'</b><span>교과서 '+esc(L.pages)+'</span></div>';
+ if(!L.sec)h+='<div class="tabs"><button id="tab-ws" aria-pressed="'+(tab==="ws")+'">활동지</button>'+(L.mc.length?'<button id="tab-qz" aria-pressed="'+(tab==="qz")+'">개념 확인 퀴즈</button>':'')+'</div>';h+='<section class="sec">';
  if(tab==="ws"){
   L.qs.forEach(function(q,qi){var id="a-"+k+"-"+qi;h+='<div class="q"><label for="'+id+'">'+(qi+1)+'. '+esc(q.q)+'</label><div class="ctx">'+esc(q.c)+'</div>';
    q.ref.forEach(function(r){h+='<div class="ref">📎 참고 자료: '+esc(r)+'</div>';});
@@ -66,6 +72,12 @@ function send(p){setStat("제출 중...","");
  fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(p)}).then(function(r){return r.json();}).then(function(j){
   if(j&&j.ok){var t=new Date().toLocaleTimeString("ko-KR");setStat((p.type==="quiz"?"점수 "+p.score+" / "+p.total+" · ":"")+"제출 완료 ("+t+"). 다시 제출하면 최신 내용으로 바뀝니다.","ok");}else setStat("제출 실패: "+(j&&j.error||"알 수 없는 오류")+" · 다시 시도해 주세요.","err");
  }).catch(function(){setStat("제출 실패: 네트워크를 확인하고 다시 시도해 주세요. (답안은 기기에 저장되어 있습니다)","err");});}
+/* 소단원 전체 퀴즈 제출: 기존 시트 구조 유지를 위해 차시별로 나눠 기록 */
+function sendParts(id,sels){if(ENDPOINT.indexOf("http")!==0){setStat("제출 주소가 설정되지 않았습니다.","err");return;}setStat("제출 중...","");var tot=0;
+ Promise.all(L.parts.map(function(pt){var a=sels.slice(pt.from,pt.from+pt.n),sc=0;a.forEach(function(v,i){if(v!==""&&+v-1===L.mc[pt.from+i].a)sc++;});tot+=sc;
+  return fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({type:"quiz",lesson:pt.code,sid:id.sid,name:id.name,score:sc,total:pt.n,answers:a})}).then(function(r){return r.json();});}))
+ .then(function(js){if(js.every(function(j){return j&&j.ok;}))setStat("점수 "+tot+" / "+L.mc.length+" · 제출 완료 ("+new Date().toLocaleTimeString("ko-KR")+"). 다시 제출하면 최신 내용으로 바뀝니다.","ok");else{var j=js.filter(function(j){return!(j&&j.ok);})[0];setStat("제출 실패: "+(j&&j.error||"알 수 없는 오류")+" · 다시 시도해 주세요.","err");}})
+ .catch(function(){setStat("제출 실패: 네트워크를 확인하고 다시 시도해 주세요. (답안은 기기에 저장되어 있습니다)","err");});}
 document.addEventListener("click",function(e){var t=e.target;if(!L)return;var k=L.code;
  if(t.id==="tab-ws"){tab="ws";render();return;}if(t.id==="tab-qz"){tab="qz";render();return;}
  if(t.id==="submit-ws"){var id=ident();if(!id)return;var ans=L.qs.map(function(q,qi){return(document.getElementById("a-"+k+"-"+qi).value||"").trim();});
@@ -78,6 +90,7 @@ document.addEventListener("click",function(e){var t=e.target;if(!L)return;var k=
   L.mc.forEach(function(m,mi){var nm="m-"+k+"-"+mi,f=document.getElementById("f-"+nm),c=f.querySelector("input:checked"),fb=f.querySelector(".fb");f.classList.remove("ok","no");
    if(!c){sels.push("");fb.innerHTML='<span class="v">답을 고르지 않았어요.</span>';return;}
    sels.push(+c.value+1);var r=+c.value===m.a;if(r)ok++;f.classList.add(r?"ok":"no");fb.innerHTML='<span class="v">'+(r?"정답!":"아쉬워요. 정답은 "+"①②③④"[m.a])+'</span> '+esc(m.e);});
+  if(L.sec){sendParts(id3,sels);return;}
   send({type:"quiz",lesson:k,sid:id3.sid,name:id3.name,score:ok,total:L.mc.length,answers:sels});}
 });
 document.addEventListener("input",function(e){var t=e.target;if(t.dataset&&t.dataset.k)ls(t.dataset.k,t.value);if(t.type==="radio")ls(t.name,t.value);});
