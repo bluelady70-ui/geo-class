@@ -38,7 +38,7 @@ var LESSONS=[{"code": "3-01-1", "label": "Ⅲ-01-1", "unit": 3, "no": "01", "sti
 var KEY="hgt-stu2-";
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(KEY+k)||"";localStorage.setItem(KEY+k,v);}catch(e){return "";}}
 function esc(t){return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
-var code=(new URLSearchParams(location.search).get("l")||"").trim(),L=LESSONS.filter(function(x){return x.code===code})[0],tab="ws";
+var code=(new URLSearchParams(location.search).get("l")||"").trim(),L=LESSONS.filter(function(x){return x.code===code})[0],tab="ws";if(L&&L.mc.length&&new URLSearchParams(location.search).get("t")==="quiz")tab="qz";
 var sid=document.getElementById("sid"),sname=document.getElementById("sname");
 sid.value=ls("sid");sname.value=ls("sname");
 sid.addEventListener("input",function(){ls("sid",sid.value);});sname.addEventListener("input",function(){ls("sname",sname.value);});
