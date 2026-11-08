@@ -67,16 +67,17 @@ function render(){var v=document.getElementById("view");
  v.innerHTML=h+'</section>';}
 function ident(){var a=sid.value.trim(),b=sname.value.trim();if(!a||!b){setStat("위쪽에 학번과 이름을 먼저 입력해 주세요.","err");sid.focus();return null;}return{sid:a,name:b};}
 function setStat(t,c){var e=document.getElementById("stat");if(e){e.textContent=t;e.className="status "+(c||"");}}
+function dupPop(nm,part){setStat("이미 제출한 "+nm+"입니다. (재제출 불가)","err");alert("이미 제출했습니다.\n\n"+nm+(part?"의 일부 차시":"")+"는 학생별로 1번만 제출할 수 있어요.\n내용을 고쳐야 하면 선생님께 말씀해 주세요.");}
 function send(p){setStat("제출 중...","");
  if(ENDPOINT.indexOf("http")!==0){setStat("제출 주소가 설정되지 않았습니다.","err");return;}
  fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(p)}).then(function(r){return r.json();}).then(function(j){
-  if(j&&j.ok){var t=new Date().toLocaleTimeString("ko-KR");setStat((p.type==="quiz"?"점수 "+p.score+" / "+p.total+" · ":"")+"제출 완료 ("+t+"). 다시 제출하면 최신 내용으로 바뀝니다.","ok");}else setStat("제출 실패: "+(j&&j.error||"알 수 없는 오류")+" · 다시 시도해 주세요.","err");
+  if(j&&j.ok){var t=new Date().toLocaleTimeString("ko-KR");setStat((p.type==="quiz"?"점수 "+p.score+" / "+p.total+" · ":"")+"제출 완료 ("+t+"). 학생별 1회만 제출할 수 있어요.","ok");}else if(j&&j.dup){dupPop(p.type==="quiz"?"개념확인퀴즈":"활동지");}else setStat("제출 실패: "+(j&&j.error||"알 수 없는 오류")+" · 다시 시도해 주세요.","err");
  }).catch(function(){setStat("제출 실패: 네트워크를 확인하고 다시 시도해 주세요. (답안은 기기에 저장되어 있습니다)","err");});}
 /* 소단원 전체 퀴즈 제출: 기존 시트 구조 유지를 위해 차시별로 나눠 기록 */
 function sendParts(id,sels){if(ENDPOINT.indexOf("http")!==0){setStat("제출 주소가 설정되지 않았습니다.","err");return;}setStat("제출 중...","");var tot=0;
  Promise.all(L.parts.map(function(pt){var a=sels.slice(pt.from,pt.from+pt.n),sc=0;a.forEach(function(v,i){if(v!==""&&+v-1===L.mc[pt.from+i].a)sc++;});tot+=sc;
   return fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({type:"quiz",lesson:pt.code,sid:id.sid,name:id.name,score:sc,total:pt.n,answers:a})}).then(function(r){return r.json();});}))
- .then(function(js){if(js.every(function(j){return j&&j.ok;}))setStat("점수 "+tot+" / "+L.mc.length+" · 제출 완료 ("+new Date().toLocaleTimeString("ko-KR")+"). 다시 제출하면 최신 내용으로 바뀝니다.","ok");else{var j=js.filter(function(j){return!(j&&j.ok);})[0];setStat("제출 실패: "+(j&&j.error||"알 수 없는 오류")+" · 다시 시도해 주세요.","err");}})
+ .then(function(js){var nd=js.filter(function(j){return j&&j.dup;}).length,nk=js.filter(function(j){return j&&j.ok;}).length;if(nk===js.length)setStat("점수 "+tot+" / "+L.mc.length+" · 제출 완료 ("+new Date().toLocaleTimeString("ko-KR")+"). 학생별 1회만 제출할 수 있어요.","ok");else if(nd===js.length)dupPop("개념확인퀴즈");else if(nd>0)dupPop("개념확인퀴즈",1);else{var j=js.filter(function(j){return!(j&&j.ok);})[0];setStat("제출 실패: "+(j&&j.error||"알 수 없는 오류")+" · 다시 시도해 주세요.","err");}})
  .catch(function(){setStat("제출 실패: 네트워크를 확인하고 다시 시도해 주세요. (답안은 기기에 저장되어 있습니다)","err");});}
 document.addEventListener("click",function(e){var t=e.target;if(!L)return;var k=L.code;
  if(t.id==="tab-ws"){tab="ws";render();return;}if(t.id==="tab-qz"){tab="qz";render();return;}
